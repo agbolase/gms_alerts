@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'features/auth/login_screen.dart';
-import 'features/auth/splash_screen.dart';
-import 'features/home/home_screen.dart';
-import 'providers/auth_state.dart';
+import 'config/app_config.dart';
+import 'features/portal/portal_screen.dart';
 
 class GmsAlertsApp extends StatelessWidget {
   const GmsAlertsApp({super.key});
@@ -11,19 +8,13 @@ class GmsAlertsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GMS Alerts',
+      title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1A335E)),
         useMaterial3: true,
       ),
-      home: Consumer<AuthState>(
-        builder: (context, auth, _) {
-          if (auth.loading) return const SplashScreen();
-          if (!auth.isLoggedIn) return const LoginScreen();
-          return const HomeScreen();
-        },
-      ),
+      home: const PortalScreen(),
     );
   }
 }

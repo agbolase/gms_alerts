@@ -4,27 +4,52 @@ class GmsUser {
     required this.username,
     required this.name,
     required this.role,
+    required this.roleId,
+    required this.schoolId,
     required this.students,
+    required this.modules,
   });
 
   final int id;
   final String username;
   final String name;
   final String role;
+  final int roleId;
+  final int schoolId;
   final List<GmsStudent> students;
+  final List<String> modules;
 
   factory GmsUser.fromJson(Map<String, dynamic> json) {
     final kids = (json['students'] as List<dynamic>? ?? [])
         .map((e) => GmsStudent.fromJson(e as Map<String, dynamic>))
         .toList();
+    final mods = (json['modules'] as List<dynamic>? ?? []).map((e) => '$e').toList();
     return GmsUser(
       id: int.tryParse('${json['id']}') ?? 0,
       username: '${json['username'] ?? ''}',
       name: '${json['name'] ?? json['username'] ?? ''}',
       role: '${json['role'] ?? ''}',
+      roleId: int.tryParse('${json['role_id']}') ?? 0,
+      schoolId: int.tryParse('${json['school_id']}') ?? 0,
       students: kids,
+      modules: mods.isEmpty
+          ? const [
+              'dashboard',
+              'alerts',
+              'students',
+              'teachers',
+              'invoices',
+              'assignments',
+              'exams',
+              'liveclasses',
+              'attendance',
+              'notices',
+            ]
+          : mods,
     );
   }
+
+  String get roleLabel => role.replaceAll('_', ' ');
 }
 
 class GmsStudent {
