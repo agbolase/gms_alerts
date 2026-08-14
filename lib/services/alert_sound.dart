@@ -1,12 +1,15 @@
+import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../core/models/models.dart';
+import 'alert_api.dart';
 
 class AlertSound {
   AlertSound._();
 
-  static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin plugin = FlutterLocalNotificationsPlugin();
   static bool _ready = false;
+  static Future<void> Function(int id)? onOpened;
 
   static Future<void> init() async {
     if (_ready) return;
@@ -16,20 +19,28 @@ class AlertSound {
       requestSoundPermission: true,
       requestBadgePermission: true,
     );
-    await _plugin.initialize(
+    await plugin.initialize(
       const InitializationSettings(android: android, iOS: ios),
+      onDidReceiveNotificationResponse: (resp) async {
+        final id = int.tryParse(resp.payload ?? '') ?? 0;
+        if (id > 0) {
+          final unread = await AlertApi.markRead([id]);
+          await setBadge(unread);
+          await onOpened?.call(id);
+        }
+      },
     );
 
     const channel = AndroidNotificationChannel(
       'gms_alerts',
       'GMS school alerts',
-      description: 'Invoices, exams, assignments, classes, and attendance',
+      description: 'School alerts with sound',
       importance: Importance.max,
       playSound: true,
       enableVibration: true,
       showBadge: true,
     );
-    await _plugin
+    await plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
 
@@ -37,9 +48,19 @@ class AlertSound {
     _ready = true;
   }
 
-  static Future<void> play(GmsAlert alert) async {
+  static Future<void> setBadge(int count) async {
+    if (count <= 0) {
+      await AppBadgePlus.updateBadge(0);
+      await plugin.cancelAll();
+      return;
+    }
+    await AppBadgePlus.updateBadge(count);
+  }
+
+  static Future<void> play(GmsAlert alert, {int unread = 1}) async {
     await init();
-    const android = AndroidNotificationDetails(
+    await setBadge(unread);
+    final android = AndroidNotificationDetails(
       'gms_alerts',
       'GMS school alerts',
       channelDescription: 'School alerts with sound',
@@ -47,19 +68,22 @@ class AlertSound {
       priority: Priority.max,
       playSound: true,
       enableVibration: true,
+      number: unread,
       audioAttributesUsage: AudioAttributesUsage.notificationRingtone,
     );
-    const ios = DarwinNotificationDetails(
+    final ios = DarwinNotificationDetails(
       presentAlert: true,
       presentSound: true,
       presentBadge: true,
+      badgeNumber: unread,
       sound: 'default',
     );
-    await _plugin.show(
+    await plugin.show(
       alert.id,
       alert.title,
       alert.body,
-      const NotificationDetails(android: android, iOS: ios),
+      NotificationDetails(android: android, iOS: ios),
+      payload: '${alert.id}',
     );
   }
 }

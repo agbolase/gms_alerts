@@ -1,7 +1,7 @@
 name: gms_alerts
-description: Lightweight Granny Murray portal app with native school alerts.
+description: Lightweight GMS portal app with native school alerts.
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.0+3
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -12,6 +12,10 @@ dependencies:
   webview_flutter: ^4.10.0
   flutter_local_notifications: ^17.2.2
   permission_handler: ^11.3.1
+  workmanager: ^0.5.2
+  shared_preferences: ^2.3.2
+  http: ^1.2.0
+  app_badge_plus: ^1.2.3
 
 dev_dependencies:
   flutter_test:
@@ -20,3 +24,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/app_icon.png
