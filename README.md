@@ -80,3 +80,4 @@ Keep the app open (or in recent apps) for the fastest audible alerts until FCM i
 | GET | `/api/gms/mobile/liveclasses` |
 | GET | `/api/gms/mobile/exams` |
 | GET | `/api/gms/mobile/attendance` |
+# gms-alerts
