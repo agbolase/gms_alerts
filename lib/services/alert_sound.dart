@@ -75,7 +75,7 @@ class AlertSound {
       sound: 'default',
     );
     await plugin.show(
-      alert.id,
+      alert.dedupeKey.hashCode.abs() % 2000000000,
       alert.title,
       alert.body,
       NotificationDetails(android: android, iOS: ios),

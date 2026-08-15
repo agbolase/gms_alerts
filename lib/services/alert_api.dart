@@ -6,6 +6,7 @@ class AlertApi {
   static const _base = 'https://gms.grannymurray.com/api/gms/mobile';
   static const tokenKey = 'gms_push_token';
   static const sinceKey = 'gms_since_id';
+  static const shownKeysKey = 'gms_shown_event_keys';
 
   static Future<void> saveToken(String token) async {
     if (token.isEmpty) return;
@@ -26,6 +27,25 @@ class AlertApi {
   static Future<void> setSinceId(int id) async {
     final p = await SharedPreferences.getInstance();
     await p.setInt(sinceKey, id);
+  }
+
+  static Future<bool> wasShown(String key) async {
+    if (key.isEmpty) return false;
+    final p = await SharedPreferences.getInstance();
+    final keys = p.getStringList(shownKeysKey) ?? [];
+    return keys.contains(key);
+  }
+
+  static Future<void> markShown(String key) async {
+    if (key.isEmpty) return;
+    final p = await SharedPreferences.getInstance();
+    final keys = p.getStringList(shownKeysKey) ?? [];
+    if (keys.contains(key)) return;
+    keys.add(key);
+    if (keys.length > 400) {
+      keys.removeRange(0, keys.length - 400);
+    }
+    await p.setStringList(shownKeysKey, keys);
   }
 
   static Uri _u(String path, [Map<String, String>? q]) {

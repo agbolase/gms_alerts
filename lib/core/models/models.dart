@@ -70,6 +70,7 @@ class GmsAlert {
     required this.title,
     required this.body,
     required this.createdAt,
+    this.eventKey = '',
   });
 
   final int id;
@@ -77,6 +78,7 @@ class GmsAlert {
   final String title;
   final String body;
   final String createdAt;
+  final String eventKey;
 
   factory GmsAlert.fromJson(Map<String, dynamic> json) => GmsAlert(
         id: int.tryParse('${json['id']}') ?? 0,
@@ -84,5 +86,11 @@ class GmsAlert {
         title: '${json['title'] ?? ''}',
         body: '${json['body'] ?? ''}',
         createdAt: '${json['created_at'] ?? ''}',
+        eventKey: '${json['event_key'] ?? json['eventKey'] ?? ''}',
       );
+
+  String get dedupeKey {
+    if (eventKey.isNotEmpty) return eventKey;
+    return 'id:$id';
+  }
 }

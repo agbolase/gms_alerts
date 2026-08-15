@@ -33,6 +33,11 @@ class FcmService {
     FirebaseMessaging.onMessage.listen((msg) async {
       final n = msg.notification;
       final id = int.tryParse('${msg.data['notification_id'] ?? 0}') ?? DateTime.now().millisecondsSinceEpoch % 100000;
+      final key = '${msg.data['event_key'] ?? ''}';
+      if (key.isNotEmpty && await AlertApi.wasShown(key)) {
+        return;
+      }
+      if (key.isNotEmpty) await AlertApi.markShown(key);
       await AlertSound.play(
         GmsAlert(
           id: id,
@@ -40,6 +45,7 @@ class FcmService {
           title: n?.title ?? 'GMS',
           body: n?.body ?? '',
           createdAt: DateTime.now().toIso8601String(),
+          eventKey: key,
         ),
       );
     });

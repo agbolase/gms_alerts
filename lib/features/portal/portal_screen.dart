@@ -148,6 +148,9 @@ class _PortalScreenState extends State<PortalScreen> {
         _sinceId = alert.id;
         await AlertApi.setSinceId(_sinceId);
         final isUnread = '${item['read_at'] ?? ''}'.isEmpty;
+        final key = alert.dedupeKey;
+        if (await AlertApi.wasShown(key)) continue;
+        await AlertApi.markShown(key);
         if (isUnread) await AlertSound.play(alert, unread: unread);
       }
     } catch (_) {}
