@@ -170,7 +170,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
       await _stopCamera();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        const MaterialPageRoute(builder: (_) => PortalScreen()),
+        MaterialPageRoute(builder: (_) => const PortalScreen()),
       );
       return;
     }
@@ -247,7 +247,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
                           await _stopCamera();
                           if (!context.mounted) return;
                           Navigator.of(context).pushReplacement(
-                            const MaterialPageRoute(builder: (_) => PortalScreen()),
+                            MaterialPageRoute(builder: (_) => const PortalScreen()),
                           );
                         },
                   child: const Text('Use password'),
