@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'app.dart';
-import 'background.dart';
+import 'services/alert_api.dart';
 import 'services/alert_sound.dart';
+import 'services/fcm_service.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await AlertSound.init();
-  await startBackgroundAlerts();
   runApp(const GmsAlertsApp());
+  Future<void>(() async {
+    await AlertSound.init();
+    if ((await AlertApi.token()).isNotEmpty) {
+      await FcmService.start();
+    }
+  });
 }

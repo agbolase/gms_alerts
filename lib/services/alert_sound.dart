@@ -1,4 +1,3 @@
-import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../core/models/models.dart';
@@ -50,11 +49,8 @@ class AlertSound {
 
   static Future<void> setBadge(int count) async {
     if (count <= 0) {
-      await AppBadgePlus.updateBadge(0);
       await plugin.cancelAll();
-      return;
     }
-    await AppBadgePlus.updateBadge(count);
   }
 
   static Future<void> play(GmsAlert alert, {int unread = 1}) async {

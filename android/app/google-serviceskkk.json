@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "482850612303",
+    "project_id": "vema-alerts",
+    "storage_bucket": "vema-alerts.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "android_client_info": {
+          "package_name": "com.grannymurray.gms_alerts"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDl96xhWGtcoS08ib5UvtywmA9gYixP5XM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -6,6 +6,8 @@ import '../../config/app_config.dart';
 import '../../core/models/models.dart';
 import '../../services/alert_api.dart';
 import '../../services/alert_sound.dart';
+import '../../services/biometric_gate.dart';
+import '../../services/fcm_service.dart';
 
 class PortalScreen extends StatefulWidget {
   const PortalScreen({super.key});
@@ -131,6 +133,12 @@ class _PortalScreenState extends State<PortalScreen> {
       }
       final token = '${map['push_token'] ?? ''}';
       if (token.isNotEmpty) await AlertApi.saveToken(token);
+      if (token.isNotEmpty) {
+        await FcmService.start();
+      }
+      if (map.containsKey('biometric')) {
+        await BiometricGate.setEnrolled(map['biometric'] == true);
+      }
       final unread = int.tryParse('${map['unread_count'] ?? 0}') ?? 0;
       await AlertSound.setBadge(unread);
       for (final item in list) {

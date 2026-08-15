@@ -39,6 +39,20 @@ class AlertApi {
     return _decode(res);
   }
 
+  static Future<void> registerFcm(String appToken, String fcmToken, String platform) async {
+    await http
+        .post(
+          _u('register_device', {'token': appToken}),
+          headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'token': appToken,
+            'fcm_token': fcmToken,
+            'platform': platform,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
+  }
+
   static Future<int> markRead(List<int> ids) async {
     final t = await token();
     if (t.isEmpty) return 0;
