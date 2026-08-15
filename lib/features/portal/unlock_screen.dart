@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../config/app_config.dart';
+import '../../services/alert_api.dart';
 import '../../services/biometric_gate.dart';
-import '../../services/camera_input_image.dart';
 import 'portal_screen.dart';
 
 class UnlockScreen extends StatefulWidget {
@@ -20,9 +20,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
   FaceDetector? _detector;
   String? _error;
   var _starting = true;
-  var _busy = false;
-  var _hits = 0;
-  var _unlocked = false;
+  var _scanning = false;
 
   @override
   void initState() {
@@ -42,11 +40,6 @@ class _UnlockScreenState extends State<UnlockScreen> {
     _camera = null;
     if (cam == null) return;
     try {
-      if (cam.value.isStreamingImages) {
-        await cam.stopImageStream();
-      }
-    } catch (_) {}
-    try {
       await cam.dispose();
     } catch (_) {}
   }
@@ -55,14 +48,13 @@ class _UnlockScreenState extends State<UnlockScreen> {
     setState(() {
       _error = null;
       _starting = true;
-      _hits = 0;
     });
     final status = await Permission.camera.request();
     if (!status.isGranted) {
       if (!mounted) return;
       setState(() {
         _starting = false;
-        _error = 'Camera permission is needed for face unlock. Enable it in settings, or use fingerprint / password.';
+        _error = 'Camera permission is needed for face unlock.';
       });
       return;
     }
@@ -89,18 +81,15 @@ class _UnlockScreenState extends State<UnlockScreen> {
         front,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: Platform.isIOS
-            ? ImageFormatGroup.bgra8888
-            : ImageFormatGroup.nv21,
+        imageFormatGroup: Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21,
       );
       await controller.initialize();
       _detector ??= FaceDetector(
         options: FaceDetectorOptions(
-          performanceMode: FaceDetectorMode.fast,
-          minFaceSize: 0.2,
+          performanceMode: FaceDetectorMode.accurate,
+          minFaceSize: 0.15,
         ),
       );
-      await controller.startImageStream(_onFrame);
       if (!mounted) {
         await controller.dispose();
         return;
@@ -109,76 +98,85 @@ class _UnlockScreenState extends State<UnlockScreen> {
         _camera = controller;
         _starting = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _starting = false;
-        _error = 'Could not open the camera for face unlock. Try fingerprint or password.';
+        _error = 'Could not open the camera. Try password.';
       });
     }
   }
 
-  Future<void> _onFrame(CameraImage image) async {
-    if (_busy || _unlocked) return;
+  Future<void> _scanFace() async {
     final cam = _camera;
-    final detector = _detector;
-    if (cam == null || detector == null || !cam.value.isInitialized) return;
-    _busy = true;
+    if (_scanning || cam == null || !cam.value.isInitialized) {
+      await _startFaceCamera();
+      return;
+    }
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
     try {
-      final input = inputImageFromCamera(
-        image: image,
-        camera: cam.description,
-        controller: cam,
-      );
-      if (input == null) return;
-      final faces = await detector.processImage(input);
-      final looking = faces.any((f) {
-        final y = f.headEulerAngleY;
-        final z = f.headEulerAngleZ;
-        if (y != null && y.abs() > 25) return false;
-        if (z != null && z.abs() > 25) return false;
-        return f.boundingBox.width > 40;
-      });
-      if (!looking) {
-        _hits = 0;
+      final shot = await cam.takePicture();
+      final detector = _detector ??
+          FaceDetector(
+            options: FaceDetectorOptions(
+              performanceMode: FaceDetectorMode.accurate,
+              minFaceSize: 0.15,
+            ),
+          );
+      _detector = detector;
+      final faces = await detector.processImage(InputImage.fromFilePath(shot.path));
+      if (faces.isEmpty) {
+        if (!mounted) return;
+        setState(() => _error = 'No face found. Hold the phone in front of your face and scan again.');
         return;
       }
-      _hits++;
-      if (_hits >= 8) {
-        await _unlockPortal();
+      final bytes = await File(shot.path).readAsBytes();
+      final hint = await AlertApi.lastUserId();
+      final data = await AlertApi.faceLogin(bytes, userId: hint);
+      if (!mounted) return;
+      if (data['success'] == true && '${data['login_url'] ?? ''}'.isNotEmpty) {
+        final user = data['user'];
+        if (user is Map && user['id'] != null) {
+          await AlertApi.saveLastUserId(int.tryParse('${user['id']}') ?? 0);
+        }
+        await _stopCamera();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => PortalScreen(initialUrl: '${data['login_url']}'),
+          ),
+        );
+        return;
       }
+      setState(() {
+        _error = '${data['message'] ?? 'Face not recognised. Enrol a face photo at school, or use password.'}';
+      });
     } catch (_) {
-      _hits = 0;
+      if (!mounted) return;
+      setState(() => _error = 'Could not scan face. Check your connection and try again.');
     } finally {
-      _busy = false;
+      if (mounted) setState(() => _scanning = false);
     }
-  }
-
-  Future<void> _unlockPortal() async {
-    if (_unlocked) return;
-    _unlocked = true;
-    await _stopCamera();
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const PortalScreen()),
-    );
   }
 
   Future<void> _tryFingerprint() async {
-    await _stopCamera();
-    if (!mounted) return;
     setState(() => _error = null);
     final result = await BiometricGate.unlock();
     if (!mounted) return;
     if (result.ok) {
-      await _unlockPortal();
+      await _stopCamera();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        const MaterialPageRoute(builder: (_) => PortalScreen()),
+      );
       return;
     }
     if (result.error != null) {
       setState(() => _error = result.error);
     }
-    _unlocked = false;
-    await _startFaceCamera();
   }
 
   @override
@@ -198,7 +196,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
                 Text(AppConfig.appName, style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 8),
                 const Text(
-                  'Look at the camera to unlock with your face',
+                  'Look at the camera, then tap Scan face',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -235,21 +233,23 @@ class _UnlockScreenState extends State<UnlockScreen> {
                 ],
                 const SizedBox(height: 20),
                 FilledButton(
-                  onPressed: _starting ? null : _startFaceCamera,
-                  child: const Text('Scan face'),
+                  onPressed: (_starting || _scanning) ? null : _scanFace,
+                  child: Text(_scanning ? 'Matching…' : 'Scan face'),
                 ),
                 TextButton(
-                  onPressed: _tryFingerprint,
+                  onPressed: _scanning ? null : _tryFingerprint,
                   child: const Text('Use fingerprint'),
                 ),
                 TextButton(
-                  onPressed: () async {
-                    await _stopCamera();
-                    if (!context.mounted) return;
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const PortalScreen()),
-                    );
-                  },
+                  onPressed: _scanning
+                      ? null
+                      : () async {
+                          await _stopCamera();
+                          if (!context.mounted) return;
+                          Navigator.of(context).pushReplacement(
+                            const MaterialPageRoute(builder: (_) => PortalScreen()),
+                          );
+                        },
                   child: const Text('Use password'),
                 ),
               ],

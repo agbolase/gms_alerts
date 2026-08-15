@@ -7,6 +7,7 @@ class AlertApi {
   static const tokenKey = 'gms_push_token';
   static const sinceKey = 'gms_since_id';
   static const shownKeysKey = 'gms_shown_event_keys';
+  static const lastUserIdKey = 'gms_last_user_id';
 
   static Future<void> saveToken(String token) async {
     if (token.isEmpty) return;
@@ -46,6 +47,30 @@ class AlertApi {
       keys.removeRange(0, keys.length - 400);
     }
     await p.setStringList(shownKeysKey, keys);
+  }
+
+  static Future<void> saveLastUserId(int id) async {
+    if (id <= 0) return;
+    final p = await SharedPreferences.getInstance();
+    await p.setInt(lastUserIdKey, id);
+  }
+
+  static Future<int> lastUserId() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getInt(lastUserIdKey) ?? 0;
+  }
+
+  static Future<Map<String, dynamic>> faceLogin(List<int> jpeg, {int userId = 0}) async {
+    final uri = Uri.parse('$_base/face_login');
+    final req = http.MultipartRequest('POST', uri);
+    req.headers['Accept'] = 'application/json';
+    req.files.add(http.MultipartFile.fromBytes('face', jpeg, filename: 'face.jpg'));
+    if (userId > 0) {
+      req.fields['user_id'] = '$userId';
+    }
+    final streamed = await req.send().timeout(const Duration(seconds: 40));
+    final res = await http.Response.fromStream(streamed);
+    return _decode(res);
   }
 
   static Uri _u(String path, [Map<String, String>? q]) {

@@ -10,7 +10,9 @@ import '../../services/biometric_gate.dart';
 import '../../services/fcm_service.dart';
 
 class PortalScreen extends StatefulWidget {
-  const PortalScreen({super.key});
+  const PortalScreen({super.key, this.initialUrl});
+
+  final String? initialUrl;
 
   @override
   State<PortalScreen> createState() => _PortalScreenState();
@@ -44,7 +46,7 @@ class _PortalScreenState extends State<PortalScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(AppConfig.portalUrl));
+      ..loadRequest(Uri.parse(widget.initialUrl ?? AppConfig.portalUrl));
   }
 
   Future<void> _injectAlertPoller() async {
