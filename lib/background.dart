@@ -36,7 +36,6 @@ Future<void> startBackgroundAlerts() async {
     gmsBackgroundTask,
     gmsBackgroundTask,
     frequency: const Duration(minutes: 15),
-    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
     constraints: Constraints(networkType: NetworkType.connected),
   );
 }
