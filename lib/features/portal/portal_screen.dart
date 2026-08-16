@@ -141,6 +141,10 @@ class _PortalScreenState extends State<PortalScreen> {
       if (map.containsKey('biometric')) {
         await BiometricGate.setEnrolled(map['biometric'] == true);
       }
+      final loggedUser = int.tryParse('${map['user_id'] ?? 0}') ?? 0;
+      if (loggedUser > 0) {
+        await AlertApi.saveLastUserId(loggedUser);
+      }
       final unread = int.tryParse('${map['unread_count'] ?? 0}') ?? 0;
       await AlertSound.setBadge(unread);
       for (final item in list) {
