@@ -81,7 +81,6 @@ class _UnlockScreenState extends State<UnlockScreen> {
         front,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21,
       );
       await controller.initialize();
       _detector ??= FaceDetector(
@@ -118,22 +117,38 @@ class _UnlockScreenState extends State<UnlockScreen> {
       _error = null;
     });
     try {
+      if (cam.value.isStreamingImages) {
+        await cam.stopImageStream();
+      }
+      await cam.pausePreview();
       final shot = await cam.takePicture();
-      final detector = _detector ??
-          FaceDetector(
-            options: FaceDetectorOptions(
-              performanceMode: FaceDetectorMode.accurate,
-              minFaceSize: 0.15,
-            ),
-          );
-      _detector = detector;
-      final faces = await detector.processImage(InputImage.fromFilePath(shot.path));
-      if (faces.isEmpty) {
-        if (!mounted) return;
-        setState(() => _error = 'No face found. Hold the phone in front of your face and scan again.');
-        return;
+      try {
+        await cam.resumePreview();
+      } catch (_) {}
+      try {
+        final detector = _detector ??
+            FaceDetector(
+              options: FaceDetectorOptions(
+                performanceMode: FaceDetectorMode.accurate,
+                minFaceSize: 0.15,
+              ),
+            );
+        _detector = detector;
+        final faces = await detector.processImage(InputImage.fromFilePath(shot.path));
+        if (faces.isEmpty) {
+          if (!mounted) return;
+          setState(() => _error = 'No face found. Hold the phone in front of your face and scan again.');
+          return;
+        }
+      } catch (_) {
+        // Still send the photo if on-device detection is unavailable.
       }
       final bytes = await File(shot.path).readAsBytes();
+      if (bytes.length < 200) {
+        if (!mounted) return;
+        setState(() => _error = 'Camera did not capture a photo. Tap Scan face again.');
+        return;
+      }
       final hint = await AlertApi.lastUserId();
       final data = await AlertApi.faceLogin(bytes, userId: hint);
       if (!mounted) return;
@@ -154,9 +169,9 @@ class _UnlockScreenState extends State<UnlockScreen> {
       setState(() {
         _error = '${data['message'] ?? 'Face not recognised. Enrol a face photo at school, or use password.'}';
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Could not scan face. Check your connection and try again.');
+      setState(() => _error = 'Could not scan face. ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => _scanning = false);
     }

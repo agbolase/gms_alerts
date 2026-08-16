@@ -61,16 +61,36 @@ class AlertApi {
   }
 
   static Future<Map<String, dynamic>> faceLogin(List<int> jpeg, {int userId = 0}) async {
-    final uri = Uri.parse('$_base/face_login');
-    final req = http.MultipartRequest('POST', uri);
-    req.headers['Accept'] = 'application/json';
-    req.files.add(http.MultipartFile.fromBytes('face', jpeg, filename: 'face.jpg'));
-    if (userId > 0) {
-      req.fields['user_id'] = '$userId';
+    final payload = jsonEncode({
+      'face': base64Encode(jpeg),
+      if (userId > 0) 'user_id': userId,
+    });
+    Object? lastError;
+    for (final path in const ['face_login', 'face_login.html']) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$_base/$path'),
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+              body: payload,
+            )
+            .timeout(const Duration(seconds: 45));
+        final data = _decode(res);
+        if (data['success'] == true || (data['message'] != null && '${data['message']}'.isNotEmpty)) {
+          return data;
+        }
+        lastError = data['message'] ?? 'HTTP ${res.statusCode}';
+      } catch (e) {
+        lastError = e;
+      }
     }
-    final streamed = await req.send().timeout(const Duration(seconds: 40));
-    final res = await http.Response.fromStream(streamed);
-    return _decode(res);
+    return {
+      'success': false,
+      'message': 'Could not reach the school server (${lastError ?? 'unknown'}). Check your connection and try again.',
+    };
   }
 
   static Uri _u(String path, [Map<String, String>? q]) {
